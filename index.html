@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>오늘의 운동 기록</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@1.3.9/dist/web/static/pretendard.css" />
+<style>
+  :root{
+    --bg:#F5F8F6;
+    --ink:#1C2321;
+    --ink-soft:#65726D;
+    --card-line:#DFE6E2;
+    --morning-band:#FFF3E4;
+    --afternoon-band:#E7F5FA;
+    --home-band:#EFEAFB;
+    --kegel:#FF5C8A;
+    --squat:#FF8A3D;
+    --lunge:#E3AA00;
+    --walk:#2BB673;
+    --chair:#1E9BBD;
+    --plank:#6C5CE0;
+    --crunch:#A25DDC;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  button, input{ font-family:inherit; }
+  button{cursor:pointer;-webkit-tap-highlight-color:transparent;}
+
+  .app-shell{
+    max-width:480px;
+    margin:0 auto;
+    min-height:100vh;
+    background:var(--bg);
+    position:relative;
+    padding-bottom:calc(76px + env(safe-area-inset-bottom));
+  }
+
+  /* header */
+  .app-header{padding:30px 22px 4px;}
+  .date-label{font-size:14px;color:var(--ink-soft);font-weight:600;margin-bottom:6px;}
+  .headline{font-size:25px;font-weight:800;letter-spacing:-0.02em;line-height:1.3;margin:0;}
+  .progress-row{display:flex;align-items:center;gap:10px;margin:16px 22px 2px;}
+  .progress-track{flex:1;height:5px;border-radius:3px;background:var(--card-line);overflow:hidden;}
+  .progress-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--squat),var(--plank));transition:width .45s ease;border-radius:3px;}
+  .progress-count{font-size:12px;font-weight:700;color:var(--ink-soft);white-space:nowrap;}
+
+  /* time blocks */
+  .time-block{padding:22px 22px 8px;margin-top:18px;}
+  .time-block.morning{background:var(--morning-band);}
+  .time-block.afternoon{background:var(--afternoon-band);}
+  .time-block.home{background:var(--home-band);}
+  .period-title{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;margin:0 0 6px;}
+  .period-icon{font-size:17px;}
+
+  .exercise-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(28,35,33,0.07);}
+  .exercise-row:last-child{border-bottom:none;}
+  .ex-info{display:flex;align-items:center;gap:10px;min-width:0;}
+  .ex-icon{font-size:19px;}
+  .ex-name{font-size:15px;font-weight:600;}
+
+  .stepper{display:flex;align-items:center;gap:8px;}
+  .step-btn{
+    width:30px;height:30px;border-radius:50%;
+    border:1.5px solid var(--row-color,var(--ink));
+    background:#fff;color:var(--row-color,var(--ink));
+    font-size:17px;line-height:1;display:flex;align-items:center;justify-content:center;
+    transition:transform .12s ease, background .12s ease, color .12s ease;
+    flex:none;
+  }
+  .step-btn:active{transform:scale(.86);background:var(--row-color,var(--ink));color:#fff;}
+  .value-input{
+    width:42px;text-align:center;font-size:16px;font-weight:800;color:var(--ink);
+    border:none;background:transparent;-moz-appearance:textfield;
+  }
+  .value-input::-webkit-outer-spin-button,.value-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .unit{font-size:12px;color:var(--ink-soft);width:16px;margin-left:4px;}
+
+  .reset-row{padding:18px 22px 4px;text-align:center;}
+  .reset-link{background:none;border:none;color:var(--ink-soft);font-size:12.5px;text-decoration:underline;padding:6px;}
+
+  /* views */
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* graph view */
+  .month-nav{display:flex;align-items:center;justify-content:center;gap:20px;padding:26px 20px 6px;}
+  .month-nav button{width:34px;height:34px;border-radius:50%;border:1px solid var(--card-line);background:#fff;font-size:15px;color:var(--ink);}
+  #monthLabel{font-size:16px;font-weight:800;min-width:110px;text-align:center;}
+
+  .chart-section{padding:18px 22px 20px;border-top:1px solid var(--card-line);}
+  .chart-head{display:flex;align-items:baseline;gap:6px;margin-bottom:8px;}
+  .chart-title{font-size:14.5px;font-weight:700;}
+  .chart-unit{font-size:12px;color:var(--ink-soft);}
+  .chart-svg{width:100%;height:96px;display:block;}
+  .chart-stats{display:flex;gap:18px;margin-top:6px;}
+  .stat-label{font-size:12px;color:var(--ink-soft);}
+  .stat-val{font-size:13px;font-weight:800;color:var(--ink);}
+
+  .empty-state{margin:30px 22px;padding:26px 20px;text-align:center;background:#fff;border:1px solid var(--card-line);border-radius:16px;}
+  .empty-state p{font-size:13.5px;color:var(--ink-soft);line-height:1.6;margin:0;}
+
+  /* tab bar */
+  .tab-bar{
+    position:fixed;left:0;right:0;bottom:0;
+    max-width:480px;margin:0 auto;
+    display:flex;background:#fff;border-top:1px solid var(--card-line);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:11px 0 9px;background:none;border:none;color:var(--ink-soft);font-size:11.5px;font-weight:700;}
+  .tab-btn.active{color:var(--ink);}
+  .tab-icon{font-size:19px;}
+
+  .toast{
+    position:fixed;left:50%;bottom:92px;transform:translateX(-50%) translateY(14px);
+    background:var(--ink);color:#fff;font-size:12.5px;font-weight:600;
+    padding:9px 18px;border-radius:20px;opacity:0;pointer-events:none;
+    transition:opacity .25s ease, transform .25s ease;
+    z-index:10;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  button:focus-visible, input:focus-visible{outline:2px solid var(--ink);outline-offset:2px;}
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <header class="app-header">
+    <div class="date-label" id="todayDate">-</div>
+    <h1 class="headline">오늘도 몸을 움직여봐요</h1>
+  </header>
+  <div class="progress-row">
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="progress-count" id="progressCount">0/9개 기록</span>
+  </div>
+
+  <!-- 오늘 기록 -->
+  <main id="todayView" class="view active">
+    <section class="time-block morning">
+      <h2 class="period-title"><span class="period-icon">☀️</span>오전</h2>
+      <div class="exercise-row" data-field="mKegel" data-step="10" style="--row-color:var(--kegel)">
+        <div class="ex-info"><span class="ex-icon">🧘</span><span class="ex-name">케겔</span></div>
+        <div class="stepper">
+          <button class="step-btn minus" type="button" aria-label="케겔 줄이기">–</button>
+          <input class="value-input" type="number" inputmode="numeric" value="0" min="0" />
+          <button class="step-btn plus" type="button" aria-label="케겔 늘리기">+</button>
+        </div>
+        <span class="unit">회</span>
+      </div>
+      <div class="exercise-row" data-field="mSquat" data-step="10" style="--row-color:var(--squat)">
+        <div class="ex-info"><span class="ex-icon">🏋️</span><span class="ex-name">스쿼트</span></div>
+        <div class="stepper">
+          <button class="step-btn minus" type="button" aria-label="스쿼트 줄이기">–</button>
+          <input class="value-input" type="number" inputmode="numeric" value="0" min="0" />
+          <button class="step-btn plus" type="button" aria-label="스쿼트 늘리기">+</button>
+        </div>
+        <span class="unit">회</span>
+      </div>
+      <div class="exercise-row" data-field="mLunge" data-step="10" style="--row-color:var(--lunge)">
+        <div class="ex-info"><span class="ex-icon">🤾</span><span class="ex-name">런지</span></div>
+        <div class="stepper">
+          <button class="step-btn minus" type="button" aria-label="런지 줄이기">–</button>
+          <input class="value-input" type="number" inputmode="numeric" value="0" min="0" />
+          <button class="step-btn plus" type="button" aria-label="런지 늘리기">+</button>
+        </div>
+        <span class="unit">회</span>
+      </div>
+    </section>
+
+    <section class="time-block afternoon">
+      <h2 class="period-title"><span class="period-icon">🌤️</span>오후</h2>
+      <div class="exercise-row" data-field="aWalk" data-step="5" style="--row-color:var(--walk)">
+        <div class="ex-info"><span class="ex-icon">🚶</span><span class="ex-name">워킹</span></div>
+        <div class="stepper">
+          <button class="step-btn minus" type="button" aria-label="워킹 줄이기">–</button>
+          <input class="value-input" type="number" inputmode="numeric" value="0" min="0" />
+          <button class="step-btn plus" type="button" aria-label="워킹 늘리기">+</button>
+        </div>
+        <span class="unit">분</span>
+      </div>
+      <div class="exercise-row" data-field="aSquat" data-step="10" style="--row-color:var(--squat)">
+        <div class="ex-info"><span class="ex-icon">🏋️</span><span class="ex-name">스쿼트</span></div>
+        <div class="stepper">
+          <button class="step-btn minus" type="button" aria-label="스쿼트 줄이기">–</button>
+          <input class="value-input" type="number" inputmode="numeric" value="0" min="0" />
+          <button class="step-btn plus" type="button" aria-label="스쿼트 늘리기">+</button>
+        </div>
+        <span class="unit">회</span>
+      </div>
+      <div class="exercise-row" data-field="aLunge" data-step="10" style="--row-color:var(--lunge)">
+        <div class="ex-info"><span class="ex-icon">🤾</span><span class="ex-name">런지</span></div>
+        <div class="stepper">
+          <button class="step-btn minus" type="button" aria-label="런지 줄이기">–</button>
+          <input class="value-input" type="number" inputmode="numeric" value="0" min="0" />
+          <button class="step-btn plus" type="button" aria-label="런지 늘리기">+</button>
+        </div>
+        <span class="unit">회</span>
+      </div>
+    </section>
+
+    <section class="time-block home">
+      <h2 class="period-title"><span class="period-icon">🏠</span>집</h2>
+      <div class="exercise-row" data-field="hChair" data-step="10" style="--row-color:var(--chair)">
+        <div class="ex-info"><span class="ex-icon">🪑</span><span class="ex-name">의자</span></div>
+        <div class="stepper">
+          <button class="step-btn minus" type="button" aria-label="의자 줄이기">–</button>
+          <input class="value-input" type="number" inputmode="numeric" value="0" min="0" />
+          <button class="step-btn plus" type="button" aria-label="의자 늘리기">+</button>
+        </div>
+        <span class="unit">회</span>
+      </div>
+      <div class="exercise-row" data-field="hPlank" data-step="30" style="--row-color:var(--plank)">
+        <div class="ex-info"><span class="ex-icon">🧎</span><span class="ex-name">플랭크</span></div>
+        <div class="stepper">
+          <button class="step-btn minus" type="button" aria-label="플랭크 줄이기">–</button>
+          <input class="value-input" type="number" inputmode="numeric" value="0" min="0" />
+          <button class="step-btn plus" type="button" aria-label="플랭크 늘리기">+</button>
+        </div>
+        <span class="unit">초</span>
+      </div>
+      <div class="exercise-row" data-field="hCrunch" data-step="10" style="--row-color:var(--crunch)">
+        <div class="ex-info"><span class="ex-icon">💪</span><span class="ex-name">크런치</span></div>
+        <div class="stepper">
+          <button class="step-btn minus" type="button" aria-label="크런치 줄이기">–</button>
+          <input class="value-input" type="number" inputmode="numeric" value="0" min="0" />
+          <button class="step-btn plus" type="button" aria-label="크런치 늘리기">+</button>
+        </div>
+        <span class="unit">회</span>
+      </div>
+    </section>
+
+    <div class="reset-row"><button class="reset-link" id="resetTodayBtn" type="button">오늘 기록 초기화</button></div>
+  </main>
+
+  <!-- 월별 그래프 -->
+  <main id="graphView" class="view">
+    <div class="month-nav">
+      <button id="prevMonth" type="button" aria-label="이전 달">‹</button>
+      <span id="monthLabel">-</span>
+      <button id="nextMonth" type="button" aria-label="다음 달">›</button>
+    </div>
+
+    <div id="chartsWrap">
+      <div class="chart-section">
+        <div class="chart-head"><span class="chart-title">케겔</span><span class="chart-unit">회 · 오전</span></div>
+        <svg class="chart-svg" id="chart-kegel" viewBox="0 0 300 100" preserveAspectRatio="none"></svg>
+        <div class="chart-stats">
+          <span><span class="stat-label">이번 달 합계</span> <span class="stat-val" id="kegel-total">-</span></span>
+          <span><span class="stat-label">기록일 평균</span> <span class="stat-val" id="kegel-avg">-</span></span>
+        </div>
+      </div>
+      <div class="chart-section">
+        <div class="chart-head"><span class="chart-title">스쿼트</span><span class="chart-unit">회 · 오전+오후 합계</span></div>
+        <svg class="chart-svg" id="chart-squat" viewBox="0 0 300 100" preserveAspectRatio="none"></svg>
+        <div class="chart-stats">
+          <span><span class="stat-label">이번 달 합계</span> <span class="stat-val" id="squat-total">-</span></span>
+          <span><span class="stat-label">기록일 평균</span> <span class="stat-val" id="squat-avg">-</span></span>
+        </div>
+      </div>
+      <div class="chart-section">
+        <div class="chart-head"><span class="chart-title">런지</span><span class="chart-unit">회 · 오전+오후 합계</span></div>
+        <svg class="chart-svg" id="chart-lunge" viewBox="0 0 300 100" preserveAspectRatio="none"></svg>
+        <div class="chart-stats">
+          <span><span class="stat-label">이번 달 합계</span> <span class="stat-val" id="lunge-total">-</span></span>
+          <span><span class="stat-label">기록일 평균</span> <span class="stat-val" id="lunge-avg">-</span></span>
+        </div>
+      </div>
+      <div class="chart-section">
+        <div class="chart-head"><span class="chart-title">워킹</span><span class="chart-unit">분 · 오후</span></div>
+        <svg class="chart-svg" id="chart-walk" viewBox="0 0 300 100" preserveAspectRatio="none"></svg>
+        <div class="chart-stats">
+          <span><span class="stat-label">이번 달 합계</span> <span class="stat-val" id="walk-total">-</span></span>
+          <span><span class="stat-label">기록일 평균</span> <span class="stat-val" id="walk-avg">-</span></span>
+        </div>
+      </div>
+      <div class="chart-section">
+        <div class="chart-head"><span class="chart-title">의자</span><span class="chart-unit">회 · 집</span></div>
+        <svg class="chart-svg" id="chart-chair" viewBox="0 0 300 100" preserveAspectRatio="none"></svg>
+        <div class="chart-stats">
+          <span><span class="stat-label">이번 달 합계</span> <span class="stat-val" id="chair-total">-</span></span>
+          <span><span class="stat-label">기록일 평균</span> <span class="stat-val" id="chair-avg">-</span></span>
+        </div>
+      </div>
+      <div class="chart-section">
+        <div class="chart-head"><span class="chart-title">플랭크</span><span class="chart-unit">초 · 집</span></div>
+        <svg class="chart-svg" id="chart-plank" viewBox="0 0 300 100" preserveAspectRatio="none"></svg>
+        <div class="chart-stats">
+          <span><span class="stat-label">이번 달 합계</span> <span class="stat-val" id="plank-total">-</span></span>
+          <span><span class="stat-label">기록일 평균</span> <span class="stat-val" id="plank-avg">-</span></span>
+        </div>
+      </div>
+      <div class="chart-section">
+        <div class="chart-head"><span class="chart-title">크런치</span><span class="chart-unit">회 · 집</span></div>
+        <svg class="chart-svg" id="chart-crunch" viewBox="0 0 300 100" preserveAspectRatio="none"></svg>
+        <div class="chart-stats">
+          <span><span class="stat-label">이번 달 합계</span> <span class="stat-val" id="crunch-total">-</span></span>
+          <span><span class="stat-label">기록일 평균</span> <span class="stat-val" id="crunch-avg">-</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="empty-state" id="emptyState" style="display:none;">
+      <p>아직 이 달에 기록이 없어요.<br/>오늘 기록 탭에서 운동을 기록해보세요.</p>
+    </div>
+  </main>
+
+  <nav class="tab-bar">
+    <button class="tab-btn active" data-view="todayView" type="button"><span class="tab-icon">📋</span>오늘 기록</button>
+    <button class="tab-btn" data-view="graphView" type="button"><span class="tab-icon">📈</span>월별 그래프</button>
+  </nav>
+</div>
+
+<div class="toast" id="toast">저장됨</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var COLORS = {
+    mKegel:'#FF5C8A',
+    mSquat:'#FF8A3D', aSquat:'#FF8A3D',
+    mLunge:'#E3AA00', aLunge:'#E3AA00',
+    aWalk:'#2BB673',
+    hChair:'#1E9BBD',
+    hPlank:'#6C5CE0',
+    hCrunch:'#A25DDC'
+  };
+  var FIELDS = ['mKegel','mSquat','mLunge','aWalk','aSquat','aLunge','hChair','hPlank','hCrunch'];
+  var TOTAL_FIELDS = FIELDS.length;
+  var DOW = ['일','월','화','수','목','금','토'];
+
+  var today = new Date();
+  var todayYear = today.getFullYear();
+  var todayMonth = today.getMonth() + 1; // 1-based
+  var todayDay = today.getDate();
+  var todayMonthKey = monthKey(todayYear, todayMonth);
+  var todayDayKey = String(todayDay).padStart(2,'0');
+
+  var graphYear = todayYear, graphMonth = todayMonth;
+  var STORAGE_PREFIX = 'exerciseTrackerData_v1:';
+  var monthCache = {}; // monthKey -> {dayKey: {field: number}}
+  var todayData = {};
+  var saveTimer = null;
+
+  function monthKey(y,m){ return y + '-' + String(m).padStart(2,'0'); }
+  function daysInMonth(y,m){ return new Date(y, m, 0).getDate(); }
+
+  function formatToday(){
+    document.getElementById('todayDate').textContent =
+      todayYear + '년 ' + todayMonth + '월 ' + todayDay + '일 (' + DOW[today.getDay()] + ')';
+  }
+
+  function loadMonth(key){
+    if (monthCache[key]) return monthCache[key];
+    var data = {};
+    try{
+      var raw = localStorage.getItem(STORAGE_PREFIX + key);
+      if (raw) data = JSON.parse(raw);
+    }catch(e){ data = {}; }
+    monthCache[key] = data;
+    return data;
+  }
+
+  function saveMonth(key, data){
+    try{
+      localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(data));
+      showToast('저장됨');
+    }catch(e){
+      showToast('저장에 실패했어요 (브라우저 저장공간을 확인해주세요)');
+    }
+  }
+
+  function showToast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(function(){ t.classList.remove('show'); }, 1400);
+  }
+
+  function scheduleSave(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){
+      var monthData = monthCache[todayMonthKey] || {};
+      monthData[todayDayKey] = todayData;
+      monthCache[todayMonthKey] = monthData;
+      saveMonth(todayMonthKey, monthData);
+    }, 450);
+  }
+
+  function clampVal(v){ v = Math.round(v); if (isNaN(v) || v < 0) v = 0; if (v > 999) v = 999; return v; }
+
+  function updateProgress(){
+    var count = FIELDS.filter(function(f){ return (todayData[f]||0) > 0; }).length;
+    document.getElementById('progressFill').style.width = Math.round(count/TOTAL_FIELDS*100) + '%';
+    document.getElementById('progressCount').textContent = count + '/' + TOTAL_FIELDS + '개 기록';
+  }
+
+  function setRowValue(row, val){
+    val = clampVal(val);
+    var field = row.dataset.field;
+    row.querySelector('.value-input').value = val;
+    todayData[field] = val;
+    updateProgress();
+    scheduleSave();
+  }
+
+  function initTodayRows(){
+    var rows = document.querySelectorAll('#todayView .exercise-row[data-field]');
+    rows.forEach(function(row){
+      var field = row.dataset.field;
+      var step = parseInt(row.dataset.step, 10) || 10;
+      var input = row.querySelector('.value-input');
+      input.value = todayData[field] || 0;
+
+      row.querySelector('.minus').addEventListener('click', function(){
+        setRowValue(row, (parseInt(input.value,10)||0) - step);
+      });
+      row.querySelector('.plus').addEventListener('click', function(){
+        setRowValue(row, (parseInt(input.value,10)||0) + step);
+      });
+      input.addEventListener('change', function(){
+        setRowValue(row, parseInt(input.value,10)||0);
+      });
+    });
+  }
+
+  function switchView(viewId){
+    document.querySelectorAll('.view').forEach(function(v){ v.classList.toggle('active', v.id === viewId); });
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.view === viewId); });
+    if (viewId === 'graphView') renderGraph();
+  }
+
+  function initTabs(){
+    document.querySelectorAll('.tab-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){ switchView(btn.dataset.view); });
+    });
+  }
+
+  function initReset(){
+    document.getElementById('resetTodayBtn').addEventListener('click', function(){
+      if (!window.confirm('오늘 기록을 초기화할까요?')) return;
+      FIELDS.forEach(function(f){ todayData[f] = 0; });
+      document.querySelectorAll('#todayView .exercise-row[data-field]').forEach(function(row){
+        row.querySelector('.value-input').value = 0;
+      });
+      updateProgress();
+      scheduleSave();
+    });
+  }
+
+  function initMonthNav(){
+    document.getElementById('prevMonth').addEventListener('click', function(){
+      graphMonth -= 1;
+      if (graphMonth < 1){ graphMonth = 12; graphYear -= 1; }
+      renderGraph();
+    });
+    document.getElementById('nextMonth').addEventListener('click', function(){
+      graphMonth += 1;
+      if (graphMonth > 12){ graphMonth = 1; graphYear += 1; }
+      renderGraph();
+    });
+  }
+
+  function buildSeries(monthData, y, m, pick){
+    var n = daysInMonth(y, m);
+    var arr = [];
+    for (var d = 1; d <= n; d++){
+      var dayKey = String(d).padStart(2,'0');
+      var rec = monthData[dayKey] || {};
+      arr.push(pick(rec));
+    }
+    return arr;
+  }
+
+  function drawChart(svgId, values, color){
+    var svg = document.getElementById(svgId);
+    var n = values.length;
+    var max = Math.max.apply(null, values.concat([1]));
+    var padL = 8, padR = 8, top = 10, base = 78;
+    var plotW = 300 - padL - padR;
+
+    function x(i){ return n <= 1 ? padL : padL + (i/(n-1)) * plotW; }
+    function y(v){ return base - (v/max) * (base-top); }
+
+    var pts = values.map(function(v,i){ return x(i) + ',' + y(v); }).join(' ');
+    var areaPts = 'M' + x(0) + ',' + base + ' L' + pts.split(' ').join(' L') + ' L' + x(n-1) + ',' + base + ' Z';
+
+    var dots = '';
+    values.forEach(function(v,i){
+      if (v > 0) dots += '<circle cx="' + x(i) + '" cy="' + y(v) + '" r="2.6" fill="' + color + '" />';
+    });
+
+    var labelDays = [1, Math.round(n*0.25), Math.round(n*0.5), Math.round(n*0.75), n]
+      .filter(function(d,i,arr){ return arr.indexOf(d) === i; });
+    var labels = labelDays.map(function(d){
+      return '<text x="' + x(d-1) + '" y="93" font-size="8" text-anchor="middle" fill="#9AA5A0">' + d + '</text>';
+    }).join('');
+
+    svg.innerHTML =
+      '<line x1="' + padL + '" y1="' + base + '" x2="' + (300-padR) + '" y2="' + base + '" stroke="#E4E9E6" stroke-width="1" />' +
+      '<path d="' + areaPts + '" fill="' + color + '" opacity="0.12" stroke="none" />' +
+      '<polyline points="' + pts + '" fill="none" stroke="' + color + '" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />' +
+      dots + labels;
+  }
+
+  function sum(arr){ return arr.reduce(function(a,b){ return a+b; }, 0); }
+  function recordedAvg(arr){
+    var recorded = arr.filter(function(v){ return v > 0; });
+    if (!recorded.length) return null;
+    return Math.round(sum(recorded) / recorded.length);
+  }
+
+  function setStat(prefix, total, avg, unit){
+    document.getElementById(prefix+'-total').textContent = total + unit;
+    document.getElementById(prefix+'-avg').textContent = (avg===null ? '-' : avg+unit);
+  }
+
+  function renderGraph(){
+    document.getElementById('monthLabel').textContent = graphYear + '년 ' + graphMonth + '월';
+    var key = monthKey(graphYear, graphMonth);
+    var data = loadMonth(key);
+
+    var kegelArr = buildSeries(data, graphYear, graphMonth, function(r){ return r.mKegel||0; });
+    var squatArr = buildSeries(data, graphYear, graphMonth, function(r){ return (r.mSquat||0) + (r.aSquat||0); });
+    var lungeArr = buildSeries(data, graphYear, graphMonth, function(r){ return (r.mLunge||0) + (r.aLunge||0); });
+    var walkArr = buildSeries(data, graphYear, graphMonth, function(r){ return r.aWalk||0; });
+    var chairArr = buildSeries(data, graphYear, graphMonth, function(r){ return r.hChair||0; });
+    var plankArr = buildSeries(data, graphYear, graphMonth, function(r){ return r.hPlank||0; });
+    var crunchArr = buildSeries(data, graphYear, graphMonth, function(r){ return r.hCrunch||0; });
+
+    var grandTotal = sum(kegelArr)+sum(squatArr)+sum(lungeArr)+sum(walkArr)+sum(chairArr)+sum(plankArr)+sum(crunchArr);
+    document.getElementById('chartsWrap').style.display = grandTotal > 0 ? '' : 'none';
+    document.getElementById('emptyState').style.display = grandTotal > 0 ? 'none' : '';
+    if (grandTotal === 0) return;
+
+    drawChart('chart-kegel', kegelArr, COLORS.mKegel);
+    drawChart('chart-squat', squatArr, COLORS.mSquat);
+    drawChart('chart-lunge', lungeArr, COLORS.mLunge);
+    drawChart('chart-walk', walkArr, COLORS.aWalk);
+    drawChart('chart-chair', chairArr, COLORS.hChair);
+    drawChart('chart-plank', plankArr, COLORS.hPlank);
+    drawChart('chart-crunch', crunchArr, COLORS.hCrunch);
+
+    setStat('kegel', sum(kegelArr), recordedAvg(kegelArr), '회');
+    setStat('squat', sum(squatArr), recordedAvg(squatArr), '회');
+    setStat('lunge', sum(lungeArr), recordedAvg(lungeArr), '회');
+    setStat('walk', sum(walkArr), recordedAvg(walkArr), '분');
+    setStat('chair', sum(chairArr), recordedAvg(chairArr), '회');
+    setStat('plank', sum(plankArr), recordedAvg(plankArr), '초');
+    setStat('crunch', sum(crunchArr), recordedAvg(crunchArr), '회');
+  }
+
+  function init(){
+    formatToday();
+    var monthData = loadMonth(todayMonthKey);
+    todayData = monthData[todayDayKey] || {};
+    FIELDS.forEach(function(f){ if (!todayData[f]) todayData[f] = 0; });
+
+    initTodayRows();
+    initTabs();
+    initReset();
+    initMonthNav();
+    updateProgress();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
